@@ -30,7 +30,7 @@ namespace ParkingApp
                 newSession.EntryDt = DateTime.Now;
                 newSession.CarPlateNumber = carPlateNumber;
                 if (openSessions != null)
-                    newSession.TicketNumber = openSessions[openSessions.Count-1].TicketNumber + 1;
+                    newSession.TicketNumber = openSessions[openSessions.Count - 1].TicketNumber + 1;
                 else
                     newSession.TicketNumber = 1;
                 openSessions.Add(newSession);
@@ -38,6 +38,8 @@ namespace ParkingApp
             }
             else
                 return null;
+
+
 
             /* Check that there is a free parking place (by comparing the parking capacity 
              * with the number of active parking sessions). If there are no free places, return null
@@ -89,31 +91,70 @@ namespace ParkingApp
 
         public decimal GetRemainingCost(int ticketNumber)
         {
+
             /* Return the amount to be paid for the parking
              * If a payment had already been made but additional charge was then given
              * because of a late exit, this method should return the amount 
              * that is yet to be paid (not the total charge)
              */
-
-
-            var session = openSessions.FirstOrDefault(s => s.TicketNumber == ticketNumber);
-            var parkingTime = DateTime.Now - session.EntryDt;
-            var iParkingTime = parkingTime.Days * 24 * 60 + parkingTime.Hours * 60 + parkingTime.Minutes;
-            var Cost = usedTariff.First(t => t.Minutes >= iParkingTime).Rate;
-            return Cost;
             
+            var session = openSessions.FirstOrDefault(s => s.TicketNumber == ticketNumber);
+            if (session.PaymentDt == null)
+            {
+                var parkingTime = DateTime.Now - session.EntryDt;
+                var iParkingTime = parkingTime.Days * 24 * 60 + parkingTime.Hours * 60 + parkingTime.Minutes;
+                if (CheckFreeLeavePeriod(iParkingTime) == false)
+                {
+                    var Cost = usedTariff.First(t => t.Minutes >= iParkingTime).Rate;
+                    return Cost;
+                }
+                else
+                {
+                    return 0;
+                }   
+            }
+            else
+            {
+                var parkingTime = DateTime.Now - session.PaymentDt;
+                int? iParkingTime = parkingTime?.Days * 24 * 60 + parkingTime?.Hours * 60 + parkingTime?.Minutes;
+                if (CheckFreeLeavePeriod(iParkingTime) == false)
+                {
+                    var Cost = usedTariff.First(t => t.Minutes >= iParkingTime).Rate;
+                    return Cost;
+                }
+                else
+                {
+                    return 0;
+                }
+
+            }
+
         }
 
         public void PayForParking(int ticketNumber, decimal amount)
         {
+            var session = openSessions.FirstOrDefault(s => s.TicketNumber == ticketNumber);
+            session.PaymentDt = DateTime.Now;
+            if (session.TotalPayment == null)
+                session.TotalPayment = amount;
+            else
+                session.TotalPayment += amount;
             /*
-             * Save the payment details in the corresponding parking session
-             * Set PaymentDt to current date and time
-             * 
-             * For simplicity we won't make any additional validation here and always
-             * assume that the parking charge is paid in full
-             */
+                       * Save the payment details in the corresponding parking session
+                       * Set PaymentDt to current date and time
+                       * 
+                       * For simplicity we won't make any additional validation here and always
+                       * assume that the parking charge is paid in full
+                       */
+            
+        }
 
+        private bool CheckFreeLeavePeriod(int? parkingtime)
+        {
+            if (parkingtime > freeParkingTime)
+                return false;
+            else
+                return true;
         }
 
         /* ADDITIONAL TASK 2 */
